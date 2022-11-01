@@ -1,6 +1,7 @@
 package com.yupi.sqlfather.controller;
 
 import com.alibaba.excel.EasyExcel;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yupi.sqlfather.common.BaseResponse;
 import com.yupi.sqlfather.common.ErrorCode;
 import com.yupi.sqlfather.common.ResultUtils;
@@ -10,21 +11,29 @@ import com.yupi.sqlfather.core.schema.TableSchema;
 import com.yupi.sqlfather.core.schema.TableSchema.Field;
 import com.yupi.sqlfather.core.schema.TableSchemaBuilder;
 import com.yupi.sqlfather.exception.BusinessException;
+import com.yupi.sqlfather.mapper.MonitorUserMapper;
 import com.yupi.sqlfather.model.dto.GenerateByAutoRequest;
 import com.yupi.sqlfather.model.dto.GenerateBySqlRequest;
 
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 
+import com.yupi.sqlfather.model.entity.MonitorUser;
+import com.yupi.sqlfather.sort.SortField;
+import com.yupi.sqlfather.sort.SortUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,9 +47,50 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class SqlController {
 
+    @Resource
+    private MonitorUserMapper mapper;
+
     @PostMapping("/generate/schema")
     public BaseResponse<GenerateVO> generateBySchema(@RequestBody TableSchema tableSchema) {
         return ResultUtils.success(GeneratorFacade.generateAll(tableSchema));
+    }
+
+    @GetMapping("/generate/test")
+    public BaseResponse<Object> test(@RequestParam String type) {
+        LambdaQueryWrapper<MonitorUser> queryWrapper = new LambdaQueryWrapper<>();
+        List<MonitorUser> monitorUsers = mapper.selectList(queryWrapper);
+        System.out.println();
+        ArrayList<SortField> sortFields = new ArrayList<>();
+        sortFields.add(build("city", 1, true));
+        sortFields.add(build("college", 1, true));
+        sortFields.add(build("age", 1, false));
+        sortFields.add(build("username", 1, true));
+        HashMap<String, Object> map = new HashMap<>();
+        if ("1".equals(type)) {
+            long begin = System.currentTimeMillis();
+            List<MonitorUser> list = monitorUsers.stream().sorted(SortUtil.sort(sortFields)).collect(Collectors.toList());
+            long after = System.currentTimeMillis();
+            map.put("list", list);
+            map.put("time", after -begin);
+            return ResultUtils.success(map);
+        } else if ("2".equals(type)) {
+            long begin = System.currentTimeMillis();
+            List<MonitorUser> list = monitorUsers.stream().sorted(SortUtil.sort(MonitorUser.class, sortFields)).collect(Collectors.toList());
+            long after = System.currentTimeMillis();
+            map.put("list", list);
+            map.put("time", after -begin);
+            return ResultUtils.success(map);
+        } else {
+            return ResultUtils.success(monitorUsers.size());
+        }
+    }
+
+    private static SortField build(String fieldName, int asc, boolean containZh) {
+        SortField sortField = new SortField();
+        sortField.setFieldName(fieldName);
+        sortField.setAsc(asc);
+        sortField.setContainZh(containZh);
+        return sortField;
     }
 
     @PostMapping("/get/schema/auto")

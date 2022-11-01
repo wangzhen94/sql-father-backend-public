@@ -44,7 +44,7 @@ public class FakerUtils {
             case IP:
                 return ZH_FAKER.internet().ipV4Address();
             case INTEGER:
-                return String.valueOf(ZH_FAKER.number().randomNumber());
+                return String.valueOf(ZH_FAKER.number().numberBetween(0, 100));
             case DECIMAL:
                 return String.valueOf(RandomUtils.nextFloat(0, 100000));
             case UNIVERSITY:
